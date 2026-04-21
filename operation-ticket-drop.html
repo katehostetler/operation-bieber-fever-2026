@@ -204,6 +204,77 @@
     transition: opacity .9s ease, visibility 0s linear .9s;
   }
 
+  /* Mini / picture-in-picture mode */
+  .transmission.is-mini {
+    background: transparent; padding: 0; pointer-events: none;
+    transition: background .3s ease, padding .3s ease;
+  }
+  .transmission.is-mini::before,
+  .transmission.is-mini::after,
+  .transmission.is-mini .transmission__scan,
+  .transmission.is-mini .transmission__vignette,
+  .transmission.is-mini .xm__top,
+  .transmission.is-mini .xm__bottom,
+  .transmission.is-mini .xm__sound-cta,
+  .transmission.is-mini .xm__caption {
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease;
+  }
+  .transmission.is-mini .xm__stage {
+    position: fixed; inset: auto 20px 20px auto;
+    padding: 0; display: block; flex: none;
+    min-height: 0; pointer-events: auto;
+  }
+  .transmission.is-mini .xm__frame {
+    width: clamp(260px, 26vw, 360px);
+    max-height: none;
+    animation: none;
+    box-shadow:
+      0 0 0 1px rgba(245,195,205,.45),
+      0 0 0 4px rgba(0,0,0,.7),
+      0 14px 50px rgba(0,0,0,.7),
+      0 0 60px rgba(245,195,205,.25);
+    transition: box-shadow .3s ease;
+  }
+  .transmission.is-mini .xm__frame > .corner,
+  .transmission.is-mini .xm__frame::before,
+  .transmission.is-mini .xm__frame::after { animation: none; transform: none; }
+  .transmission.is-mini .xm__frame:hover {
+    box-shadow:
+      0 0 0 2px rgba(245,195,205,.8),
+      0 0 0 4px rgba(0,0,0,.7),
+      0 14px 50px rgba(0,0,0,.7),
+      0 0 80px rgba(245,195,205,.5);
+  }
+  .xm__click-expand {
+    position: absolute; inset: 0; z-index: 11;
+    display: none; cursor: pointer; background: transparent;
+  }
+  .transmission.is-mini .xm__click-expand { display: block; }
+  .transmission.is-mini .xm__click-expand::before {
+    content: 'Expand'; position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--mono); font-size: 10px; letter-spacing: .22em;
+    text-transform: uppercase; font-weight: 500;
+    background: rgba(14,14,16,.75); color: var(--pink);
+    padding: 8px 12px; border: 1px solid rgba(245,195,205,.5);
+    opacity: 0; transition: opacity .2s ease;
+    pointer-events: none; white-space: nowrap;
+  }
+  .transmission.is-mini .xm__click-expand:hover::before { opacity: 1; }
+  .xm__mini-close {
+    position: absolute; top: -11px; right: -11px; z-index: 15;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--ink); color: var(--pink); border: 1px solid var(--pink);
+    font-family: var(--mono); font-size: 14px; line-height: 1; font-weight: 400;
+    cursor: pointer; display: none;
+    align-items: center; justify-content: center; padding: 0;
+    transition: background .2s ease, color .2s ease, transform .2s ease;
+  }
+  .xm__mini-close:hover { background: var(--pink); color: var(--ink); transform: scale(1.1); }
+  .xm__mini-close:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; }
+  .transmission.is-mini .xm__mini-close { display: flex; }
+
   .transmission::before,
   .transmission::after {
     content: ''; position: absolute; left: 0; right: 0; height: 90px;
@@ -489,6 +560,8 @@
     <div class="xm__frame">
       <span class="corner bl" aria-hidden="true"></span>
       <span class="corner br" aria-hidden="true"></span>
+      <button class="xm__mini-close" id="btn-mini-close" type="button" aria-label="Close video">×</button>
+      <div class="xm__click-expand" id="xm-click-expand" role="button" tabindex="0" aria-label="Expand video"></div>
       <div id="xm-player"></div>
       <button class="xm__sound-cta" id="btn-sound-cta" type="button" aria-label="Tap to unmute transmission">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -890,6 +963,8 @@
     const btnMute = document.getElementById('btn-mute');
     const btnPause = document.getElementById('btn-pause');
     const btnSoundCta = document.getElementById('btn-sound-cta');
+    const btnMiniClose = document.getElementById('btn-mini-close');
+    const clickExpand = document.getElementById('xm-click-expand');
 
     document.documentElement.classList.add('intro-locked');
 
@@ -1005,27 +1080,43 @@
       attempt();
     }
 
-    function openOverlay() {
-      overlay.classList.remove('is-dismissed');
+    function toFull() {
+      overlay.classList.remove('is-dismissed', 'is-mini');
       document.documentElement.classList.add('intro-locked');
       btnReplay.classList.remove('is-ready');
-      try { player && player.seekTo(0, true); player && player.playVideo(); } catch (e) {}
+      try { player && player.playVideo(); } catch (e) {}
       if (userWantsSound) startWatchdog();
     }
 
-    function closeOverlay() {
+    function toMini() {
+      overlay.classList.add('is-mini');
+      overlay.classList.remove('is-dismissed');
+      document.documentElement.classList.remove('intro-locked');
+      btnReplay.classList.remove('is-ready');
+      // Keep video playing.
+    }
+
+    function dismissFully() {
       overlay.classList.add('is-dismissed');
+      overlay.classList.remove('is-mini');
       document.documentElement.classList.remove('intro-locked');
       try { player && player.pauseVideo(); } catch (e) {}
       stopWatchdog();
       setTimeout(() => btnReplay.classList.add('is-ready'), 400);
     }
 
-    btnEnter.addEventListener('click', closeOverlay);
-    btnSkip.addEventListener('click', closeOverlay);
-    btnReplay.addEventListener('click', openOverlay);
+    btnEnter.addEventListener('click', toMini);
+    btnSkip.addEventListener('click', dismissFully);
+    btnReplay.addEventListener('click', toFull);
+    btnMiniClose.addEventListener('click', (e) => { e.stopPropagation(); dismissFully(); });
+    clickExpand.addEventListener('click', toFull);
+    clickExpand.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toFull(); }
+    });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !overlay.classList.contains('is-dismissed')) closeOverlay();
+      if (e.key !== 'Escape') return;
+      if (overlay.classList.contains('is-mini')) dismissFully();
+      else if (!overlay.classList.contains('is-dismissed')) toMini();
     });
 
     btnSoundCta.addEventListener('click', () => { unmuteWithRetries(); });
