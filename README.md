@@ -13,7 +13,7 @@ Future onsales are therefore treated as a continuation of prior engagement — n
 
 There is no known treatment. The briefing document is a coping mechanism.
 
-> This document is for operational planning only. It does not constitute a guarantee of outcome.
+> This document is for hypothetical operational planning only. (and was also created solely to test the new Claude Design feature and likely will never be looked at again).
 
 ## Live
 
